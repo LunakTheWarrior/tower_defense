@@ -116,6 +116,7 @@ void Game::spawn() {
     EnemyKind kind = EnemyKind::Runner;
     if (wave >= 2 && spawned_ % 4 == 2) kind = EnemyKind::Swarm;
     if (wave >= 3 && spawned_ % 5 == 4) kind = EnemyKind::Brute;
+    if (wave >= 4 && spawned_ % 7 == 5) kind = EnemyKind::Sentinel;
     if (wave % 5 == 0 && remaining_to_spawn == 1) kind = EnemyKind::Titan;
     const float base_health = 27.0f + wave * 11.0f + wave * wave * 1.4f;
     float multiplier = 1.0f;
@@ -124,6 +125,7 @@ void Game::spawn() {
     if (kind == EnemyKind::Swarm) { multiplier = 0.55f; speed *= 1.7f; bounty = 7; }
     if (kind == EnemyKind::Brute) { multiplier = 2.7f; speed *= 0.68f; bounty = 20; }
     if (kind == EnemyKind::Titan) { multiplier = 9.0f; speed *= 0.48f; bounty = 85; }
+    if (kind == EnemyKind::Sentinel) { multiplier = 1.2f; speed *= 0.8f; bounty = 18; }
     const float hp = base_health * multiplier;
     enemies.push_back({next_id_++, kind, 0, hp, hp, speed, 0, bounty});
     --remaining_to_spawn;
@@ -177,12 +179,16 @@ void Game::step(float dt) {
         if (tower.cooldown > 0) continue;
         shots.push_back({origin, tower.aim, tower.kind});
         tower.cooldown = spec(tower.kind).cooldown / (1 + 0.12f * (tower.level - 1));
+        const auto hit = [&](Enemy& enemy) {
+            const float armor = enemy.kind == EnemyKind::Sentinel && tower.kind != TowerKind::Rail ? 0.5f : 1.0f;
+            enemy.health -= damage(tower) * armor;
+        };
         if (tower.kind == TowerKind::Mortar) {
             for (auto& enemy : enemies) {
-                if (distance(tower.aim, position(enemy.progress)) <= 1.25f) enemy.health -= damage(tower);
+                if (distance(tower.aim, position(enemy.progress)) <= 1.25f) hit(enemy);
             }
         } else {
-            target->health -= damage(tower);
+            hit(*target);
             if (tower.kind == TowerKind::Frost) target->slow_time = 2.2f;
         }
     }

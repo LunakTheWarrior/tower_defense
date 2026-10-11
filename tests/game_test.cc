@@ -119,6 +119,51 @@ void test_splash_and_slow() {
     near(frost.enemies[0].progress - start, 0.045f, "frost reduces movement speed to 45 percent");
 }
 
+void test_rail_and_sentinel() {
+    for (const auto kind : {TowerKind::Pulse, TowerKind::Mortar, TowerKind::Frost, TowerKind::Rail}) {
+        auto game = combat();
+        check(game.build({3, 3}, kind).has_value(), "armor fixture builds tower");
+        game.remaining_to_spawn = 0;
+        game.enemies = {enemy(101, 4, 200)};
+        game.enemies[0].kind = EnemyKind::Sentinel;
+        game.tick(0.001f);
+        const float multiplier = kind == TowerKind::Rail ? 1.0f : 0.5f;
+        near(game.enemies[0].health, 200 - spec(kind).damage * multiplier,
+             "sentinel armor halves all damage except rail");
+    }
+    auto rail = combat();
+    check(rail.build({3, 3}, TowerKind::Rail).has_value(), "rail placement succeeds");
+    check(rail.credits == 110, "rail costs 150 credits");
+    rail.remaining_to_spawn = 0;
+    rail.enemies = {enemy(101, 10, 200)};
+    rail.tick(0.001f);
+    near(rail.enemies[0].health, 128, "rail hits beyond pulse range");
+    rail.tick(0.25f);
+    near(rail.enemies[0].health, 128, "rail respects its long cooldown");
+    rail.enemies[0].health = 1;
+    rail.enemies[0].kind = EnemyKind::Sentinel;
+    rail.enemies[0].bounty = 18;
+    rail.towers[0].cooldown = 0;
+    const int credits = rail.credits;
+    rail.tick(0.001f);
+    check(rail.kills == 1 && rail.credits == credits + 18 + 40,
+          "sentinel awards bounty plus completed-wave bonus once");
+
+    Game wave;
+    wave.wave = 3;
+    wave.start_wave();
+    for (int i = 0; i < 30; ++i) wave.tick(0.25f);
+    bool sentinel = false;
+    for (const auto& unit : wave.enemies) {
+        if (unit.kind == EnemyKind::Sentinel) {
+            sentinel = true;
+            check(unit.bounty == 18 && unit.speed > 0 && unit.max_health > 0,
+                  "spawned sentinel has valid combat stats");
+        }
+    }
+    check(sentinel, "wave four introduces sentinels");
+}
+
 void test_kill_rewards() {
     auto game = combat();
     check(game.build({3, 3}, TowerKind::Pulse).has_value(), "reward fixture builds first tower");
@@ -226,6 +271,7 @@ int main() {
         test_wave_lifecycle();
         test_priority_and_range();
         test_splash_and_slow();
+        test_rail_and_sentinel();
         test_kill_rewards();
         test_end_states();
         test_time_validation();

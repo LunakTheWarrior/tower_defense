@@ -22,8 +22,8 @@ struct Cell {
     bool operator==(const Cell&) const = default;
 };
 
-enum class TowerKind { Pulse, Mortar, Frost };
-enum class EnemyKind { Runner, Brute, Swarm, Titan };
+enum class TowerKind { Pulse, Mortar, Frost, Rail };
+enum class EnemyKind { Runner, Brute, Swarm, Titan, Sentinel };
 enum class Phase { Planning, Wave, Won, Lost };
 enum class BuildError { Outside, Road, Occupied, Funds, Finished };
 
@@ -36,10 +36,11 @@ struct TowerSpec {
     float cooldown;
 };
 
-inline constexpr std::array<TowerSpec, 3> kTowerSpecs{{
+inline constexpr std::array<TowerSpec, 4> kTowerSpecs{{
     {"PULSE", "Fast, focused energy bolts", 70, 3.2f, 15.0f, 0.48f},
     {"MORTAR", "Heavy splash damage", 115, 3.8f, 32.0f, 1.5f},
     {"FROST", "Slows enemies in their tracks", 90, 2.8f, 7.0f, 0.7f},
+    {"RAIL", "Long-range armor-piercing shots", 150, 5.0f, 72.0f, 2.0f},
 }};
 
 struct Tower {

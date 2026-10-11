@@ -23,7 +23,8 @@ constexpr Color kGold{246, 194, 91, 255};
 constexpr Color kMint{110, 225, 188, 255};
 constexpr Color kRed{245, 112, 112, 255};
 constexpr Color kBlue{117, 192, 249, 255};
-constexpr std::array<Color, 3> kTowerColors{kMint, kGold, kBlue};
+constexpr Color kViolet{193, 156, 255, 255};
+constexpr std::array<Color, kTowerSpecs.size()> kTowerColors{kMint, kGold, kBlue, kViolet};
 
 Vector3 world(Point point, float y = 0) { return {point.x - 7.5f, y, point.z - 5.5f}; }
 Vector3 world(Cell cell, float y = 0) { return world(Point{float(cell.x), float(cell.z)}, y); }
@@ -85,6 +86,13 @@ void draw_tower(const Tower& tower, bool ghost = false) {
         const auto end = Vector3Add({p.x, 1.02f, p.z}, Vector3Scale(direction, 0.35f));
         DrawCylinderEx({p.x, 0.64f, p.z}, end, 0.23f, 0.22f, 10, accent);
         DrawSphere(end, 0.15f, tint(kBackground));
+    } else if (tower.kind == TowerKind::Rail) {
+        DrawCylinder({p.x, 0.43f, p.z}, 0.18f, 0.29f, 0.6f, 8, tint(kMuted));
+        Vector3 dir = Vector3Normalize(Vector3Subtract(world(tower.aim, 1.05f), {p.x, 1.05f, p.z}));
+        if (Vector3Length(dir) < 0.01f) dir = {0, 0, -1};
+        const Vector3 end = Vector3Add({p.x, 1.05f, p.z}, Vector3Scale(dir, 0.85f));
+        DrawCylinderEx({p.x, 1.05f, p.z}, end, 0.13f, 0.09f, 8, accent);
+        DrawSphere(end, 0.12f, tint(kText));
     } else {
         DrawCylinder({p.x, 0.43f, p.z}, 0.16f, 0.27f, 0.38f, 6, tint(Color{76, 106, 126, 255}));
         DrawCylinder({p.x, 0.77f, p.z}, 0.0f, 0.24f, 0.48f, 4, accent);
@@ -98,14 +106,18 @@ void draw_tower(const Tower& tower, bool ghost = false) {
 void draw_enemy(const Enemy& enemy, float time) {
     const auto p = world(position(enemy.progress));
     const bool boss = enemy.kind == EnemyKind::Titan;
-    const float scale = boss ? 0.9f : enemy.kind == EnemyKind::Brute ? 0.62f : 0.40f;
+    const float scale = boss ? 0.9f : enemy.kind == EnemyKind::Brute ? 0.62f : enemy.kind == EnemyKind::Sentinel ? 0.52f : 0.40f;
     const float bob = std::sin(time * 9 + enemy.id) * 0.035f;
     const Color color = enemy.slow_time > 0 ? kBlue : boss ? Color{216, 103, 174, 255} :
-                        enemy.kind == EnemyKind::Brute ? Color{216, 133, 92, 255} : kRed;
+                        enemy.kind == EnemyKind::Brute ? Color{216, 133, 92, 255} :
+                        enemy.kind == EnemyKind::Sentinel ? kViolet : kRed;
     DrawCylinder({p.x, 0.13f, p.z}, scale * 0.65f, scale * 0.65f, 0.015f, 16, Color{94, 81, 63, 255});
     DrawCube({p.x, 0.24f + scale / 2 + bob, p.z}, scale, scale * 0.8f, scale, color);
     DrawCube({p.x, 0.29f + scale / 2 + bob, p.z + scale / 2 + 0.01f}, scale * 0.66f, 0.09f, 0.02f, kBackground);
-    if (boss) {
+    if (enemy.kind == EnemyKind::Sentinel) {
+        DrawCubeWires({p.x, 0.53f + bob, p.z}, 0.67f, 0.65f, 0.67f, kText);
+        ring({p.x, 0.57f + bob, p.z}, 0.48f, kViolet);
+    } else if (boss) {
         DrawCylinder({p.x, 1.0f + bob, p.z}, 0.1f, 0.34f, 0.4f, 4, kGold);
     } else if (enemy.kind == EnemyKind::Swarm) {
         DrawCube({p.x, 0.55f + bob, p.z}, 0.62f, 0.05f, 0.15f, color);
@@ -197,7 +209,7 @@ void draw_help(int width, int height) {
     label("FIELD MANUAL", x + 30, y + 26, 28, kGold);
     label("Protect the crystal through ten waves.", x + 30, y + 70, 19);
     constexpr std::array<std::pair<std::string_view, std::string_view>, 8> controls{{
-        {"1 / 2 / 3", "Select pulse / mortar / frost"},
+        {"1 / 2 / 3 / 4", "Select pulse / mortar / frost / rail"},
         {"LEFT CLICK", "Build, or inspect an existing tower"},
         {"U / X", "Upgrade / sell selected tower"},
         {"SPACE", "Launch the next wave"},
@@ -256,14 +268,17 @@ int main(int argc, char** argv) {
     bool smoke_passed = true;
 
     if (smoke_test) {
+        game.credits += spec(TowerKind::Rail).price;
         if (!game.build({3, 3}, TowerKind::Pulse) ||
             !game.build({5, 6}, TowerKind::Mortar) ||
-            !game.build({8, 6}, TowerKind::Pulse)) {
+            !game.build({8, 6}, TowerKind::Pulse) ||
+            !game.build({12, 4}, TowerKind::Rail)) {
             std::fprintf(stderr, "Smoke test setup failed: could not place the initial towers.\n");
             CloseWindow();
             return 1;
         }
         game.start_wave();
+        game.enemies.push_back({999, EnemyKind::Sentinel, 20, 80, 80, 1, 0, 18});
         building = false;
         notice_time = 0;
     }
@@ -321,7 +336,7 @@ int main(int argc, char** argv) {
             if (IsKeyPressed(KEY_U)) upgrade();
             if (IsKeyPressed(KEY_X)) sell();
             if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) { selected.reset(); building = false; }
-            for (int i = 0; i < 3; ++i) {
+            for (int i = 0; i < int(kTowerSpecs.size()); ++i) {
                 if (IsKeyPressed(KEY_ONE + i)) {
                     build_kind = static_cast<TowerKind>(i);
                     building = true;
@@ -404,20 +419,20 @@ int main(int argc, char** argv) {
         card({side_x - 8, 104, 286, float(height - 152)}, kPanel, 0.025f);
         label("BUILD YOUR DEFENSE", side_x + 10, 123, 18);
         label("Choose a blueprint. Place on grass.", side_x + 10, 152, 13, kMuted);
-        for (int i = 0; i < 3; ++i) {
+        for (int i = 0; i < int(kTowerSpecs.size()); ++i) {
             const auto kind = static_cast<TowerKind>(i);
             const auto& info = spec(kind);
-            const Rectangle rect{side_x + 8, 184.0f + i * 80, 254, 70};
+            const Rectangle rect{side_x + 8, 184.0f + i * 62, 254, 56};
             const bool active = building && build_kind == kind;
             const bool over = CheckCollisionPointRec(GetMousePosition(), rect);
             card(rect, active ? Color{44, 67, 69, 255} : over && !help ? Color{35, 53, 63, 255} : kCard);
             if (active) DrawRectangleRoundedLinesEx(rect, 0.13f, 8, 1.5f, tower_color(kind));
-            card({rect.x + 10, rect.y + 12, 39, 44}, Fade(tower_color(kind), 0.15f));
-            centered(std::to_string(i + 1), rect.x + 29, rect.y + 23, 22, tower_color(kind));
+            card({rect.x + 10, rect.y + 8, 39, 39}, Fade(tower_color(kind), 0.15f));
+            centered(std::to_string(i + 1), rect.x + 29, rect.y + 17, 22, tower_color(kind));
             label(info.name, rect.x + 61, rect.y + 12, 19, tower_color(kind));
             label(std::to_string(info.price), rect.x + 205, rect.y + 13, 18, game.credits >= info.price ? kGold : kMuted);
-            label(i == 0 ? "QUICK FIRE / SINGLE" : i == 1 ? "AREA DAMAGE / HEAVY" : "SLOW FIELD / SUPPORT",
-                  rect.x + 61, rect.y + 42, 10, kMuted);
+            label(i == 0 ? "QUICK FIRE / SINGLE" : i == 1 ? "AREA DAMAGE / HEAVY" : i == 2 ? "SLOW FIELD / SUPPORT" : "ARMOR PIERCING / LONG",
+                  rect.x + 61, rect.y + 36, 10, kMuted);
             if (!help && !finished && over && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                 building = true;
                 build_kind = kind;
@@ -439,8 +454,8 @@ int main(int argc, char** argv) {
             label("TACTICAL NOTES", side_x + 12, 459, 16, kGold);
             label("Build around bends to cover", side_x + 12, 491, 15, kMuted);
             label("more of the enemy route.", side_x + 12, 513, 15, kMuted);
-            label("Frost + mortar: slow them", side_x + 12, 548, 15, kMuted);
-            label("down, then hit the whole pack.", side_x + 12, 570, 15, kMuted);
+            label("Sentinels resist normal hits.", side_x + 12, 548, 15, kMuted);
+            label("Use rail to pierce their armor.", side_x + 12, 570, 15, kMuted);
             label("Click a tower to upgrade it.", side_x + 12, 606, 14, kMint);
         }
 
@@ -453,7 +468,7 @@ int main(int argc, char** argv) {
         if (button({side_x + 10, control_y + 57, 120, 35}, paused ? "P  RESUME" : "P  PAUSE", !help && !finished)) paused = !paused;
         if (button({side_x + 140, control_y + 57, 120, 35}, fast ? "F  2x" : "F  1x", !help && !finished)) fast = !fast;
 
-        label("1-3  BUILD     U  UPGRADE     Q/E  ORBIT     SCROLL  ZOOM", 28, height - 29.0f, 13, kMuted);
+        label("1-4  BUILD     U  UPGRADE     Q/E  ORBIT     SCROLL  ZOOM", 28, height - 29.0f, 13, kMuted);
         label("ELIMINATED  " + std::to_string(game.kills), width - 280.0f, height - 29.0f, 13, kMint);
         if (game.phase == Phase::Wave) {
             label("ON ROUTE  " + std::to_string(game.enemies.size()) + "   /   INCOMING  " + std::to_string(game.remaining_to_spawn),
@@ -485,7 +500,7 @@ int main(int argc, char** argv) {
                 smoke_passed = ExportImage(capture, screenshot.c_str());
                 UnloadImage(capture);
             }
-            smoke_passed = smoke_passed && game.towers.size() == 3 && game.wave == 1 && game.kills > 0;
+            smoke_passed = smoke_passed && game.towers.size() == 4 && game.wave == 1 && game.kills > 0;
             std::printf("Smoke test: rendered %d frames, %zu towers, %d kills, %zu enemies.\n",
                         frames, game.towers.size(), game.kills, game.enemies.size());
             break;

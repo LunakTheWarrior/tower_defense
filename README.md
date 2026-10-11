@@ -74,16 +74,19 @@ you may also build, upgrade, and sell during combat or while paused.
 | Pulse | 70 | Rapid single-target damage |
 | Mortar | 115 | Splash damage against clustered enemies |
 | Frost | 90 | Slows enemies to 45% speed for 2.2 seconds |
+| Rail | 150 | Long-range, heavy shots that bypass Sentinel armor |
 
 Towers target the furthest enemy along the route within range. Each tower has
 three upgrade levels; upgrades increase damage, range, and fire rate. Selling
 returns 70% of the total investment. Earn credits from kills and wave bonuses.
 Titans arrive on waves 5 and 10 and cost five integrity if they reach the core.
+Sentinels appear from wave 4, take half damage from other towers, and award 18
+credits. Their violet armor rings distinguish them on the battlefield.
 Survive wave 10 to win; zero integrity ends the game.
 
 | Control | Action |
 | --- | --- |
-| `1`, `2`, `3` | Select pulse, mortar, frost |
+| `1`, `2`, `3`, `4` | Select pulse, mortar, frost, rail |
 | Left click | Place a tower or inspect an existing one |
 | `U` / `X` | Upgrade / sell selected tower |
 | `Space` | Start next wave |
@@ -108,7 +111,7 @@ xvfb-run -a bazelisk run //:tower_defense -- \
   --smoke-test --screenshot /tmp/bastion.png
 ```
 
-The smoke test places three towers, starts a wave, renders 300 frames, and exits.
+The smoke test places four towers and a Sentinel, starts a wave, renders 300 frames, and exits.
 Without `--smoke-test`, the window stays interactive until closed.
 
 ## Layout
