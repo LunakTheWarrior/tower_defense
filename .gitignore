@@ -1,0 +1,4 @@
+/bazel-*
+/.bazel-links/
+/.cache/
+/*.png

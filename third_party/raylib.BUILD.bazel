@@ -1,0 +1,22 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+# raylib's bundled GLFW uses the Linux X11 backend. No system raylib is needed.
+cc_library(
+    name = "raylib",
+    srcs = [
+        "src/rcore.c",
+        "src/rglfw.c",
+        "src/rmodels.c",
+        "src/rshapes.c",
+        "src/rtext.c",
+        "src/rtextures.c",
+        "src/utils.c",
+    ],
+    hdrs = glob(["src/**/*.h"]),
+    textual_hdrs = glob(["src/external/**/*.c", "src/platforms/*.c"]),
+    includes = ["src", "src/external/glfw/include"],
+    local_defines = ["PLATFORM_DESKTOP", "GRAPHICS_API_OPENGL_33", "_GLFW_X11"],
+    copts = ["-std=gnu99", "-fno-strict-aliasing", "-Wno-unused-result"],
+    linkopts = ["-lGL", "-lX11", "-lm", "-lpthread", "-ldl", "-lrt"],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,23 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+
+cc_library(
+    name = "simulation",
+    srcs = ["src/game.cc"],
+    hdrs = ["src/game.h"],
+    copts = ["-Wall", "-Wextra", "-Wpedantic"],
+)
+
+cc_binary(
+    name = "tower_defense",
+    srcs = ["src/main.cc"],
+    copts = ["-Wall", "-Wextra", "-Wpedantic"],
+    deps = [":simulation", "@raylib//:raylib"],
+)
+
+cc_test(
+    name = "simulation_test",
+    size = "small",
+    srcs = ["tests/game_test.cc"],
+    copts = ["-Wall", "-Wextra", "-Wpedantic"],
+    deps = [":simulation"],
+)

@@ -1,0 +1,18 @@
+module(name = "bastion", version = "0.1.0")
+
+bazel_dep(name = "rules_cc", version = "0.1.1")
+bazel_dep(name = "platforms", version = "0.0.10")
+
+gcc = use_extension("//tools/toolchains:repositories.bzl", "gcc")
+use_repo(gcc, "bastion_gcc16")
+register_toolchains("@bastion_gcc16//:toolchain")
+
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+http_archive(
+    name = "raylib",
+    type = "tar.gz",
+    urls = ["https://codeload.github.com/raysan5/raylib/tar.gz/refs/tags/5.5"],
+    sha256 = "aea98ecf5bc5c5e0b789a76de0083a21a70457050ea4cc2aec7566935f5e258e",
+    strip_prefix = "raylib-5.5",
+    build_file = "//third_party:raylib.BUILD.bazel",
+)

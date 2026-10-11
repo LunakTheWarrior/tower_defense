@@ -1,0 +1,4 @@
+# The registered toolchain owns the language standard and compiler flags.
+build --platforms=//tools/toolchains:linux_x86_64
+build --compilation_mode=opt
+test --test_output=errors
