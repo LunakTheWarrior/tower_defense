@@ -7,55 +7,61 @@ All models and effects are generated in code; no external art assets are require
 
 ## Build and play
 
-The current build targets **Linux with X11 (or XWayland) and OpenGL 3.3**.
-Use GCC 13 or newer with a C++23 standard library supporting `std::expected`.
-Bazel 8.1.1 is pinned in `.bazelversion`; Bazelisk can select it automatically.
-The initial build needs network access to fetch pinned dependencies.
+The build targets **Linux x86_64 with X11 (or XWayland) and OpenGL 3.3**.
+Install **Bazelisk**, native **GCC/G++ 13 or newer**, binutils, and the system's
+OpenGL/X11 development packages. GCC 16 is preferred when installed; the
+registered toolchain selects the newest supported version in `/usr/bin` and
+resolves real compiler paths, bypassing Fedora's ccache wrappers.
 
-On Ubuntu/Debian, install the compiler and graphics development packages:
-
-```sh
-sudo apt install g++ libx11-dev libxrandr-dev libxinerama-dev \
-  libxcursor-dev libxi-dev libgl1-mesa-dev
-```
-
-With Bazel or Bazelisk installed:
+Ubuntu prerequisites:
 
 ```sh
-bazel build //:tower_defense
-bazel run //:tower_defense
-bazel test //...
+sudo apt install g++ binutils libgl-dev libx11-dev libxrandr-dev \
+  libxinerama-dev libxcursor-dev libxi-dev
 ```
 
-No system raylib installation is needed. Bazel downloads its source using a
-pinned SHA-256 checksum. The simulation tests do not require a display.
-
-### Build troubleshooting
-
-`.bazelrc` imports the toolchain settings in
-[`tools/toolchains/gcc.bazelrc`](tools/toolchains/gcc.bazelrc). They set
-`CC=/usr/bin/gcc` and `CXX=/usr/bin/g++` through `--repo_env`, so Bazel's compiler
-discovery bypasses Fedora's `/usr/lib64/ccache/gcc` wrapper, regardless of `PATH`
-or the shell's `CC` setting. This avoids ccache's read-only sandbox error.
-Normal `bazel build`, `bazel run`, and `bazel test` commands apply these settings
-automatically; Bazel's own build cache remains enabled.
-
-For a GCC installation at another location, override the repository settings:
+Fedora prerequisites:
 
 ```sh
-bazel run --repo_env=CC=/opt/gcc/bin/gcc --repo_env=CXX=/opt/gcc/bin/g++ //:tower_defense
+sudo dnf install gcc gcc-c++ binutils libglvnd-devel libX11-devel \
+  libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel
 ```
+
+Build, test, and play directly from your usual terminal:
+
+```sh
+bazelisk build //:tower_defense
+bazelisk test //...
+bazelisk run //:tower_defense
+```
+
+Bazelisk downloads the version in `.bazelversion`. The first build also fetches
+checksum-pinned dependencies. The native executable links the host's OpenGL
+libraries, which load its installed GPU drivers on Ubuntu, Fedora, and other
+Linux desktops. No Nix shell or software-rendering override is required. You can
+also launch `./bazel-bin/tower_defense` directly after building.
+
+### Toolchain options and troubleshooting
+
+To select a particular native GCC installation:
+
+```sh
+bazelisk build --repo_env=BASTION_GCC=/usr/bin/gcc-16 //:tower_defense
+```
+
+The optional Nix flake pins a GCC 16.2 SDK for explicit `--config=nix` builds;
+see [the toolchain guide](tools/toolchains/README.md). It is separate from the
+normal native build and has its own graphics runtime requirements.
 
 Warnings that `bazel-bin`, `bazel-out`, or other convenience links already exist
-are separate from compiler failures. Copied files or directories can occupy
-these names. Leave their contents intact and use a different link prefix:
+are separate from compiler failures. Leave existing contents intact and choose
+an alternate link prefix:
 
 ```sh
-bazel run --symlink_prefix=.bazel-links/bazel- //:tower_defense
+bazelisk run --symlink_prefix=.bazel-links/bazel- //:tower_defense
 ```
 
-The alternate link directory is ignored by Git. Avoid copying `bazel-*` build
-outputs when moving the project between machines.
+Avoid copying `bazel-*` build outputs when moving the project between machines.
 
 ## Play
 
@@ -94,9 +100,11 @@ and invest wave bonuses before launching the next wave.
 ## Validation
 
 ```sh
-bazel test //:simulation_test
-# Optional software-rendered smoke test (requires xvfb and xauth):
-xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 bazel run //:tower_defense -- \
+bazelisk test //:simulation_test
+# Verifies native GCC, C++23/C99, the x86_64 ABI, and mixed-language linking:
+bazelisk test //:toolchain_test
+# Optional headless check; install Xvfb and xauth first:
+xvfb-run -a bazelisk run //:tower_defense -- \
   --smoke-test --screenshot /tmp/bastion.png
 ```
 
@@ -109,6 +117,8 @@ Without `--smoke-test`, the window stays interactive until closed.
 - `src/main.cc`: procedural 3D rendering, picking, camera, and desktop UI.
 - `tests/game_test.cc`: headless behavior tests with a small explicit-check harness.
 - `third_party/`: Bazel integration for raylib's bundled GLFW/X11 backend.
+- `tools/toolchains/`: registered Linux x86_64 GCC toolchain and SDK validation.
+- `flake.nix`, `flake.lock`: optional pinned Nix SDK and development shells.
 
 Audio and save files are not implemented. Windows/macOS build definitions are
 not included in this Linux version.

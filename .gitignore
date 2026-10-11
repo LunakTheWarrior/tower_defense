@@ -2,3 +2,6 @@
 /.bazel-links/
 /.cache/
 /*.png
+/result
+/result-*
+/.direnv/

@@ -1,4 +1,7 @@
 # The registered toolchain owns the language standard and compiler flags.
+common --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
 build --platforms=//tools/toolchains:linux_x86_64
 build --compilation_mode=opt
+# Optional pinned SDK; normal builds use the native system SDK and GPU drivers.
+build:nix --extra_toolchains=@bastion_gcc16//:toolchain
 test --test_output=errors

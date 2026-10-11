@@ -256,9 +256,13 @@ int main(int argc, char** argv) {
     bool smoke_passed = true;
 
     if (smoke_test) {
-        game.build({3, 3}, TowerKind::Pulse);
-        game.build({5, 6}, TowerKind::Mortar);
-        game.build({8, 6}, TowerKind::Pulse);
+        if (!game.build({3, 3}, TowerKind::Pulse) ||
+            !game.build({5, 6}, TowerKind::Mortar) ||
+            !game.build({8, 6}, TowerKind::Pulse)) {
+            std::fprintf(stderr, "Smoke test setup failed: could not place the initial towers.\n");
+            CloseWindow();
+            return 1;
+        }
         game.start_wave();
         building = false;
         notice_time = 0;

@@ -1,4 +1,4 @@
-"""GCC 16 policy and native Linux x86_64 C/C++ toolchain registration.
+"""GCC policy and native Linux x86_64 C/C++ toolchain registration.
 
 Reuse rules_cc's tested Unix action/feature definitions for dependency files,
 response files, PIC, archives, shared libraries, coverage, and linking. Keep
@@ -9,7 +9,7 @@ Compiler and SDK paths are validated by repositories.bzl, not resolved in PATH.
 load("@rules_cc//cc:defs.bzl", "cc_toolchain")
 load("@rules_cc//cc/private/toolchain:unix_cc_toolchain_config.bzl", "cc_toolchain_config")
 
-def gcc16_toolchain(name, tools, includes, compile_flags, link_flags, version):
+def gcc_toolchain(name, tools, includes, compile_flags, link_flags, version):
     """Declare the configured compiler and constrain both execution and target."""
     identifier = "bastion-gcc-{}-x86_64-linux-gnu".format(version)
     cc_toolchain_config(
@@ -20,7 +20,7 @@ def gcc16_toolchain(name, tools, includes, compile_flags, link_flags, version):
         cpu = "k8",
         target_libc = "glibc",
         compiler = "gcc",
-        abi_version = "gcc-16",
+        abi_version = "gcc-" + version.split(".")[0],
         abi_libc_version = "glibc",
         tool_paths = tools,
         cxx_builtin_include_directories = includes,
@@ -28,7 +28,6 @@ def gcc16_toolchain(name, tools, includes, compile_flags, link_flags, version):
             "-march=x86-64",
             "-mtune=generic",
             "-Wall",
-            "-Wextra",
             "-fstack-protector-strong",
             "-fno-omit-frame-pointer",
             "-ffunction-sections",
@@ -61,7 +60,6 @@ def gcc16_toolchain(name, tools, includes, compile_flags, link_flags, version):
         name = name + "_inputs",
         srcs = ["toolchain.json"],
     )
-    native.filegroup(name = name + "_empty")
     cc_toolchain(
         name = name + "_cc",
         toolchain_identifier = identifier,

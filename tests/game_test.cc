@@ -89,7 +89,7 @@ void test_wave_lifecycle() {
 
 void test_priority_and_range() {
     auto game = combat();
-    game.build({3, 3}, TowerKind::Pulse);
+    check(game.build({3, 3}, TowerKind::Pulse).has_value(), "targeting fixture builds pulse tower");
     game.enemies = {enemy(101, 2), enemy(102, 4), enemy(103, 25)};
     game.tick(0.001f);
     near(game.enemies[0].health, 100, "less advanced enemy is not targeted");
@@ -102,7 +102,7 @@ void test_priority_and_range() {
 
 void test_splash_and_slow() {
     auto mortar = combat();
-    mortar.build({3, 3}, TowerKind::Mortar);
+    check(mortar.build({3, 3}, TowerKind::Mortar).has_value(), "splash fixture builds mortar");
     mortar.enemies = {enemy(101, 3.6f), enemy(102, 4.0f), enemy(103, 1.0f)};
     mortar.tick(0.001f);
     near(mortar.enemies[0].health, 68, "mortar damages nearby enemy");
@@ -110,7 +110,7 @@ void test_splash_and_slow() {
     near(mortar.enemies[2].health, 100, "mortar splash has bounded radius");
 
     auto frost = combat();
-    frost.build({3, 3}, TowerKind::Frost);
+    check(frost.build({3, 3}, TowerKind::Frost).has_value(), "slow fixture builds frost tower");
     frost.enemies = {enemy(101, 4.0f, 100, 1)};
     frost.tick(0.001f);
     check(frost.enemies[0].slow_time > 2, "frost applies slow");
@@ -121,8 +121,8 @@ void test_splash_and_slow() {
 
 void test_kill_rewards() {
     auto game = combat();
-    game.build({3, 3}, TowerKind::Pulse);
-    game.build({2, 3}, TowerKind::Pulse);
+    check(game.build({3, 3}, TowerKind::Pulse).has_value(), "reward fixture builds first tower");
+    check(game.build({2, 3}, TowerKind::Pulse).has_value(), "reward fixture builds second tower");
     game.enemies = {enemy(101, 4, 1)};
     const int money = game.credits;
     game.tick(0.001f);

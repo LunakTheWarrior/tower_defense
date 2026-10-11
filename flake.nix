@@ -12,13 +12,16 @@
       binutils = compiler.bintools;
       graphics = with pkgs; [
         libGL
-        xorg.libX11
-        xorg.libXrandr
-        xorg.libXinerama
-        xorg.libXcursor
-        xorg.libXi
+        libx11
+        libxrandr
+        libxinerama
+        libxcursor
+        libxi
+        libxext
+        libxfixes
+        libxrender
       ];
-      includeDirectories = map (pkg: "${lib.getDev pkg}/include") graphics;
+      includeDirectories = map (pkg: "${lib.getDev pkg}/include") (graphics ++ [ pkgs.xorgproto ]);
       libraryDirectories = map (pkg: "${lib.getLib pkg}/lib") graphics;
       runtimeDirectories = libraryDirectories ++ [ "${lib.getLib compiler.cc}/lib" ];
       manifest = pkgs.writeText "bastion-gcc16-toolchain.json" (builtins.toJSON {
@@ -28,7 +31,7 @@
         tools = {
           gcc = "${compiler}/bin/gcc";
           cpp = "${compiler}/bin/cpp";
-          gcov = "${compiler}/bin/gcov";
+          gcov = "${compiler.cc}/bin/gcov";
           ar = "${binutils}/bin/ar";
           ld = "${binutils}/bin/ld";
           nm = "${binutils}/bin/nm";
@@ -42,16 +45,27 @@
         link_flags = (map (dir: "-L${dir}") libraryDirectories)
           ++ (map (dir: "-Wl,-rpath,${dir}") runtimeDirectories);
       });
+      shellArgs = {
+        packages = [ compiler binutils pkgs.bazel_8 pkgs.pkg-config pkgs.xorgproto ] ++ graphics;
+        BASTION_GCC_TOOLCHAIN = manifest;
+        # Editor/build helpers use the same immutable compiler as Bazel.
+        CC = "${compiler}/bin/gcc";
+        CXX = "${compiler}/bin/g++";
+      };
     in
     {
       packages.${system}.toolchain-manifest = manifest;
-      devShells.${system}.default = pkgs.mkShellNoCC {
-        packages = [ compiler binutils pkgs.bazel_8 pkgs.pkg-config ] ++ graphics;
-        BASTION_GCC_TOOLCHAIN = manifest;
-        # Native Bazel compiler discovery is disabled by our registered toolchain;
-        # these also keep editor/build helpers on the same immutable compiler.
-        CC = "${compiler}/bin/gcc";
-        CXX = "${compiler}/bin/g++";
+      devShells.${system} = {
+        default = pkgs.mkShellNoCC shellArgs;
+        # Portable CPU rendering for non-NixOS desktops and headless CI, with no
+        # dependency on the host's Mesa/NVIDIA userspace driver version.
+        software = pkgs.mkShellNoCC (shellArgs // {
+          packages = shellArgs.packages ++ [ pkgs.mesa pkgs.xvfb-run ];
+          LIBGL_ALWAYS_SOFTWARE = "1";
+          LIBGL_DRIVERS_PATH = "${pkgs.mesa}/lib/dri";
+          __GLX_VENDOR_LIBRARY_NAME = "mesa";
+          LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.mesa ];
+        });
       };
     };
 }

@@ -21,3 +21,16 @@ cc_test(
     copts = ["-Wall", "-Wextra", "-Wpedantic"],
     deps = [":simulation"],
 )
+
+cc_library(
+    name = "toolchain_c_probe",
+    srcs = ["tests/toolchain_probe.c"],
+    testonly = True,
+)
+
+cc_test(
+    name = "toolchain_test",
+    size = "small",
+    srcs = ["tests/toolchain_test.cc"],
+    deps = [":toolchain_c_probe"],
+)
